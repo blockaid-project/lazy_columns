@@ -24,7 +24,13 @@ module LazyColumns
         define_method column do
           unless has_attribute?(column)
             changes_before_reload = self.changes.clone
-            self.reload
+
+            # Same as `self.reload` except without clearing the query cache;
+            # taken from `activerecord/lib/active_record/persistence.rb`.
+            fresh_object = self.class.unscoped { self.class.find(id) }
+            @attributes = fresh_object.instance_variable_get("@attributes")
+            @new_record = false
+
             changes_before_reload.each{|attribute_name, values| self.send("#{attribute_name}=", values[1])}
           end
           read_attribute column
